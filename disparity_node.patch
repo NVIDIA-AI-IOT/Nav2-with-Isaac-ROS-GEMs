@@ -1,0 +1,74 @@
+diff --git a/isaac_ros_stereo_image_proc/src/disparity_node.cpp b/isaac_ros_stereo_image_proc/src/disparity_node.cpp
+index 53659e3..dbce19e 100644
+--- a/isaac_ros_stereo_image_proc/src/disparity_node.cpp
++++ b/isaac_ros_stereo_image_proc/src/disparity_node.cpp
+@@ -1,5 +1,5 @@
+ /**
+- * Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
++ * Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+  *
+  * NVIDIA CORPORATION and its licensors retain all intellectual property
+  * and proprietary rights in and to this software, related documentation
+@@ -35,6 +35,7 @@ DisparityNode::DisparityNode(const rclcpp::NodeOptions & options)
+   sub_right_image_{this, "right/image_rect"},
+   sub_left_info_{this, "left/camera_info"},
+   sub_right_info_{this, "right/camera_info"},
++  sub_left_semantic_image_{this, "unet/raw_segmentation_mask"},
+   max_disparity_{static_cast<int>(declare_parameter("max_disparity", 64))},
+   scale_{static_cast<double>(declare_parameter("scale", 1 / 32.0))},
+   queue_size_{static_cast<int>(declare_parameter<int>(
+@@ -42,7 +43,7 @@ DisparityNode::DisparityNode(const rclcpp::NodeOptions & options)
+   vpi_backends_{isaac_ros::common::DeclareVPIBackendParameter(this, VPI_BACKEND_CUDA)},
+   exact_sync_{std::make_shared<ExactSync>(
+       ExactPolicy(queue_size_), sub_left_image_, sub_right_image_, sub_left_info_,
+-      sub_right_info_)},
++      sub_right_info_, sub_left_semantic_image_)},
+   pub_{create_publisher<stereo_msgs::msg::DisparityImage>("disparity", queue_size_)}
+ {
+   if (max_disparity_ <= 0) {
+@@ -100,14 +101,16 @@ void DisparityNode::DisparityCallback(
+   const sensor_msgs::msg::Image::ConstSharedPtr & left_image_msg,
+   const sensor_msgs::msg::Image::ConstSharedPtr & right_image_msg,
+   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & left_info_msg,
+-  const sensor_msgs::msg::CameraInfo::ConstSharedPtr & right_info_msg)
++  const sensor_msgs::msg::CameraInfo::ConstSharedPtr & right_info_msg,
++  const sensor_msgs::msg::Image::ConstSharedPtr & left_semantic_image_msg)
+ {
+   // Extract images from ROS2 messages as grayscale
+   const cv::Mat left_input_cv = cv_bridge::toCvShare(left_image_msg, "mono8")->image;
+   const cv::Mat right_input_cv = cv_bridge::toCvShare(right_image_msg, "mono8")->image;
++  const cv::Mat left_semantic_input_cv = cv_bridge::toCvShare(left_semantic_image_msg)->image;
+ 
+   // Check current dimensions against previous dimensions to determine if cache is valid
+-  const size_t height{left_image_msg->height}, width{left_image_msg->width};
++  const size_t height{left_info_msg->height}, width{left_info_msg->width};
+   const bool cache_valid = (height == prev_height_) && (width == prev_width_);
+ 
+   if (cache_valid) {
+@@ -253,8 +256,19 @@ void DisparityNode::DisparityCallback(
+ 
+     stereo_msgs::msg::DisparityImage disparity_image;
+     disparity_image.header = left_info_msg->header;
+-    disparity_image.image =
+-      *cv_bridge::CvImage(left_info_msg->header, "32FC1", cvOut).toImageMsg();
++    
++    // If disparity filtering is required before point cloud generation
++    int desired_label = 2;
++    for (int v = 0; v < height; ++v) {
++	for (int u = 0; u < width; ++u) {
++		// Set non-desired pixels to invalid in disparity_image
++		if (static_cast<int>(left_semantic_input_cv.at<uchar>(v, u)) != desired_label) {
++			cvOut.at<float>(v, u) = std::numeric_limits<float>::quiet_NaN();
++		}
++	}
++    }
++
++    disparity_image.image = *cv_bridge::CvImage(left_info_msg->header, "32FC1", cvOut).toImageMsg();    
+     disparity_image.f = right_info_msg->p[0];   // Focal length in pixels
+     disparity_image.t = -right_info_msg->p[3] / right_info_msg->p[0];   // Baseline in world units
+     disparity_image.min_disparity = 0;
+@@ -273,3 +287,4 @@ void DisparityNode::DisparityCallback(
+ 
+ #include "rclcpp_components/register_node_macro.hpp"
+ RCLCPP_COMPONENTS_REGISTER_NODE(isaac_ros::stereo_image_proc::DisparityNode)
++
