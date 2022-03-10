@@ -13,7 +13,7 @@ We focus on a real-world problem where robots are damaged due to collision with 
 </p>
 
 ## Isaac Sim Setup
-We use a [warehouse environment](http://ov-isaac-dev/omniverse://ov-isaac-dev/Projects/gtc_sj_nov_2021/hum3dusd/Warehouse_01/Warehouse_02_for_navigation_carter_ros.usd) in Isaac sim which includes the Carter robot. Following the [Carter ROS2 example](https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/tutorial_ros2_navigation.html), we generate an occupancy map that is used by the Nav2 stack to avoid static obstacles like shelves. Dynamic/moving obstacles including forklifts and trolleys are added to the environment after creating the occupancy map.
+We use a warehouse environment in Isaac sim which includes the Carter robot. Following the [Carter ROS2 example](https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/tutorial_ros2_navigation.html), we generate an occupancy map that is used by the Nav2 stack to avoid static obstacles like shelves. Dynamic/moving obstacles including forklifts and trolleys are added to the environment after creating the occupancy map.
 
 It is important to note the offset between Carter's left and right stereo cameras in Isaac Sim for the Isaac ROS Stereo GEM to generate disparity correctly. Ensure that the [ROS2 bridge](https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/ext_omni_isaac_ros_bridge.html) is enabled in Sim before starting simulation.
 
