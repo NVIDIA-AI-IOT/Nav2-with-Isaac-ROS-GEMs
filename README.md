@@ -110,7 +110,7 @@ Each pixel in the raw segmentation image generated from the Segmentation GEM rep
 
    The input RGB images to the Segmentation and Stereo nodes must have the same dimensions as that of the images the segmentation model has been trained on. The generated semantic and disparity images will then be of the same size, using which filtering can be performed on the disparity image.
 
-6. In a new terminal, follow Step 2 from [Running the pipeline](https://gitlab-master.nvidia.com/asawareeb/isaac-ros-nav2#running-the-pipeline) to build and source the packages. Run the Segmentation node in this terminal:
+6. In a new terminal, follow Step 2 from [Running the pipeline](https://github.com/NVIDIA-AI-IOT/Nav2-with-Isaac-ROS-GEMs#running-the-pipeline) to build and source the packages. Run the Segmentation node in this terminal:
    `ros2 launch isaac_ros_unet isaac_ros_unet_tensor_rt_launch.py`.
 
    You can visualize the output using **rqt** on topic `/unet/colored_segmentation_mask` when the node is running (ensure that the `ROS_DOMAIN_ID` variable of all terminals is set to the same number).
